@@ -17,25 +17,16 @@ class DockToolBar;
 class DockStatusBar;
 class TabBar;
 } // namespace fincept::ui
-namespace fincept::chat_mode {
-class ChatModeScreen;
-}
-namespace fincept::screens {
-class LockScreen;
-}
 
 namespace fincept {
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
   public:
-    /// @param window_id  Unique id for this window instance (0 = primary, 1+ = secondary).
-    ///                   Primary restores saved geometry; secondary uses smart placement.
     explicit MainWindow(int window_id = 0, QWidget* parent = nullptr);
 
     int window_id() const { return window_id_; }
 
-    /// Returns the next unique window ID (thread-safe via Qt UI thread only).
     static int next_window_id() {
         static int s_id = 1;
         return s_id++;
@@ -47,40 +38,21 @@ class MainWindow : public QMainWindow {
 
   private:
     QStackedWidget* stack_ = nullptr;
-    QStackedWidget* auth_stack_ = nullptr;
-
     int window_id_ = 0;
 
-    // ADS dock system
     ads::CDockManager* dock_manager_ = nullptr;
     DockScreenRouter* dock_router_ = nullptr;
     ui::DockToolBar* dock_toolbar_ = nullptr;
     ui::DockStatusBar* dock_status_bar_ = nullptr;
     ui::TabBar* tab_bar_ = nullptr;
 
-    // View state
     bool focus_mode_ = false;
     bool chat_mode_ = false;
     bool always_on_top_ = false;
-    bool locked_ = false; ///< True while lock/PIN screen is active — blocks navigation.
-    bool pin_gate_cleared_ = false; ///< Set once the user has passed the PIN gate this session.
-                                    ///< Prevents subsequent auth_state_changed events (profile
-                                    ///< refresh, subscription fetch, focus refresh) from
-                                    ///< re-locking the terminal. Reset on lock / logout.
     AiChatBubble* chat_bubble_ = nullptr;
-    QTimer* user_refresh_timer_ = nullptr;
 
-    // Debounced persistence of dock layout on add/replace/remove via command bar.
-    // Without this, layout changes only survive clean shutdown (closeEvent),
-    // so a crash or kill loses the user's dock setup.
     QTimer* dock_layout_save_timer_ = nullptr;
     void schedule_dock_layout_save();
-
-    // Chat mode
-    chat_mode::ChatModeScreen* chat_mode_screen_ = nullptr;
-
-    // Lock/PIN screen
-    screens::LockScreen* lock_screen_ = nullptr;
 
     void setup_auth_screens();
     void setup_app_screens();
@@ -92,11 +64,7 @@ class MainWindow : public QMainWindow {
     void show_lock_screen();
     void on_terminal_unlocked();
     void update_window_title();
-    /// Show or hide the toolbar/status bar shell (hidden during auth screens).
     void set_shell_visible(bool visible);
-
-    // Info screens stack (Contact, Terms, Privacy, Trademarks, Help)
-    QStackedWidget* info_stack_ = nullptr;
 
   private slots:
     void show_login();
