@@ -23,8 +23,6 @@ namespace fincept::ui {
 static constexpr int kMaxResults = 10;
 static constexpr int kSearchDebounceMs = 300;
 
-// ── styling ─────────────────────────────────────────────────────────────────
-
 static QString input_ss() {
     return QString("QLineEdit{"
                    "  background:%1;"
@@ -72,13 +70,7 @@ static QString list_ss() {
         .arg(colors::AMBER.get());
 }
 
-// ── yfinance symbol conversion ───────────────────────────────────────────────
-
-/// Convert exchange + symbol to yfinance-compatible ticker.
-/// The /market/search API returns clean symbols (e.g. "RELIANCE") with exchange
-/// as a separate field. yfinance needs suffixed tickers for non-US exchanges.
 static QString to_yfinance_symbol(const QString& symbol, const QString& exchange, const QString& country = {}) {
-    // EURONEXT suffix depends on country
     if (exchange.toUpper() == "EURONEXT") {
         static const QHash<QString, QString> euronext_map = {
             {"FR", ".PA"}, {"NL", ".AS"}, {"BE", ".BR"}, {"PT", ".LS"}, {"IE", ".IR"},
@@ -88,225 +80,54 @@ static QString to_yfinance_symbol(const QString& symbol, const QString& exchange
     }
 
     static const QHash<QString, QString> suffix_map = {
-        // India
-        {"NSE", ".NS"},
-        {"BSE", ".BO"},
-        // Asia-Pacific
-        {"HKEX", ".HK"},
-        {"TSE", ".T"},
-        {"NAG", ".T"},
-        {"KRX", ".KS"},
-        {"SGX", ".SI"},
-        {"ASX", ".AX"},
-        {"IDX", ".JK"},
-        {"MYX", ".KL"},
-        {"SET", ".BK"},
-        {"PSE", ".PS"},
-        {"TPEX", ".TWO"},
-        // Europe — Germany
-        {"XETR", ".DE"},
-        {"FWB", ".F"},
-        {"DUS", ".DU"},
-        {"HAM", ".HM"},
-        {"HAN", ".HA"},
-        {"MUN", ".MU"},
-        {"SWB", ".SG"},
-        {"GETTEX", ".DE"},
-        {"TRADEGATE", ".DE"},
-        {"LS", ".DE"},
-        {"LSX", ".DE"},
-        // Europe — UK
-        {"LSE", ".L"},
-        {"LSIN", ".L"},
-        {"AQUIS", ".L"},
-        // Europe — Other
-        {"BME", ".MC"},
-        {"MIL", ".MI"},
-        {"EUROTLX", ".MI"},
-        {"SIX", ".SW"},
-        {"BX", ".SW"},
-        {"VIE", ".VI"},
-        {"LUXSE", ".LU"},
-        // Americas — Canada
-        {"TSX", ".TO"},
-        {"TSXV", ".V"},
-        {"CSE", ".CN"},
-        {"NEO", ".NE"},
-        // Americas — Latin America
-        {"BMFBOVESPA", ".SA"},
-        {"BMV", ".MX"},
-        {"BIVA", ".MX"},
-        {"BCBA", ".BA"},
-        {"BCS", ".SN"},
-        {"BVC", ".CL"},
-        {"BVL", ".LM"},
-        // Middle East & Africa
-        {"BIST", ".IS"},
-        {"QSE", ".QA"},
-        {"EGX", ".CA"},
-        {"NSENG", ".LG"},
-        // South Asia
-        {"PSX", ".KA"},
+        {"NSE", ".NS"}, {"BSE", ".BO"}, {"HKEX", ".HK"}, {"TSE", ".T"}, {"NAG", ".T"},
+        {"KRX", ".KS"}, {"SGX", ".SI"}, {"ASX", ".AX"}, {"IDX", ".JK"}, {"MYX", ".KL"},
+        {"SET", ".BK"}, {"PSE", ".PS"}, {"TPEX", ".TWO"}, {"XETR", ".DE"}, {"FWB", ".F"},
+        {"DUS", ".DU"}, {"HAM", ".HM"}, {"HAN", ".HA"}, {"MUN", ".MU"}, {"SWB", ".SG"},
+        {"GETTEX", ".DE"}, {"TRADEGATE", ".DE"}, {"LS", ".DE"}, {"LSX", ".DE"}, {"LSE", ".L"},
+        {"LSIN", ".L"}, {"AQUIS", ".L"}, {"BME", ".MC"}, {"MIL", ".MI"}, {"EUROTLX", ".MI"},
+        {"SIX", ".SW"}, {"BX", ".SW"}, {"VIE", ".VI"}, {"LUXSE", ".LU"}, {"TSX", ".TO"},
+        {"TSXV", ".V"}, {"CSE", ".CN"}, {"NEO", ".NE"}, {"BMFBOVESPA", ".SA"}, {"BMV", ".MX"},
+        {"BIVA", ".MX"}, {"BCBA", ".BA"}, {"BCS", ".SN"}, {"BVC", ".CL"}, {"BVL", ".LM"},
+        {"BIST", ".IS"}, {"QSE", ".QA"}, {"EGX", ".CA"}, {"NSENG", ".LG"}, {"PSX", ".KA"},
         {"DSEBD", ".BD"},
     };
 
     const auto it = suffix_map.find(exchange.toUpper());
     if (it != suffix_map.end())
         return symbol + it.value();
-    return symbol; // NASDAQ, NYSE, AMEX, OTC, FINRA, crypto exchanges — no suffix
+    return symbol;
 }
-
-// ── command registry ─────────────────────────────────────────────────────────
 
 void CommandBar::build_commands() {
     commands_ = {
-        // Primary tabs
-        {"dashboard",
-         "Dashboard",
-         "Main overview screen",
-         {"dash", "home", "overview", "main"},
-         "F1",
-         {"dashboard", "home", "summary"}},
-        {"markets",
-         "Markets",
-         "Live market data",
-         {"mkts", "markets", "market", "live"},
-         "F2",
-         {"markets", "stocks", "quotes", "prices"}},
+        {"dashboard", "Dashboard", "Main overview screen", {"dash", "home", "overview", "main"}, "F1", {"dashboard", "home", "summary"}},
+        {"markets", "Markets", "Live market data", {"mkts", "markets", "market", "live"}, "F2", {"markets", "stocks", "quotes", "prices"}},
         {"news", "News", "Financial news feed", {"news", "headlines", "feed"}, "F3", {"news", "headlines", "articles"}},
-        {"portfolio",
-         "Portfolio",
-         "Portfolio management",
-         {"port", "portfolio", "pf", "holdings"},
-         "F4",
-         {"portfolio", "holdings", "positions"}},
-        {"backtesting",
-         "Backtesting",
-         "Strategy backtesting",
-         {"bktest", "backtest", "bt"},
-         "F5",
-         {"backtest", "strategy", "historical"}},
-        {"watchlist",
-         "Watchlist",
-         "Manage watchlists",
-         {"watch", "watchlist", "wl"},
-         "F6",
-         {"watchlist", "favorites", "track"}},
-        {"crypto_trading",
-         "Crypto Trading",
-         "Cryptocurrency trading",
-         {"trade", "trading", "crypto", "kraken"},
-         "F9",
-         {"trading", "crypto", "exchange"}},
+        {"portfolio", "Portfolio", "Portfolio management", {"port", "portfolio", "pf", "holdings"}, "F4", {"portfolio", "holdings", "positions"}},
+        {"backtesting", "Backtesting", "Strategy backtesting", {"bktest", "backtest", "bt"}, "F5", {"backtest", "strategy", "historical"}},
+        {"watchlist", "Watchlist", "Manage watchlists", {"watch", "watchlist", "wl"}, "F6", {"watchlist", "favorites", "track"}},
+        {"crypto_trading", "Crypto Trading", "Cryptocurrency trading", {"trade", "trading", "crypto", "kraken"}, "F9", {"trading", "crypto", "exchange"}},
         {"ai_chat", "AI Chat", "AI assistant", {"ai", "chat", "assistant", "bot"}, "F10", {"ai", "chat", "assistant"}},
         {"notes", "Notes", "Notes and reports", {"notes", "note"}, "F11", {"notes", "reports", "documents"}},
-        {"profile",
-         "Profile",
-         "User profile & account",
-         {"prof", "profile", "account"},
-         "F12",
-         {"profile", "account", "user"}},
-        {"settings",
-         "Settings",
-         "Application settings",
-         {"settings", "prefs", "config"},
-         "",
-         {"settings", "preferences"}},
-        // Trading & Portfolio
-        {"equity_trading",
-         "Equity Trading",
-         "Stock trading interface",
-         {"eqtrade", "stocks", "equities"},
-         "",
-         {"equity", "stocks", "trading"}},
-        {"algo_trading",
-         "Algo Trading",
-         "Algorithmic trading",
-         {"algo", "algotrading"},
-         "",
-         {"algo", "algorithmic", "automated"}},
-        // Research
-        {"equity_research",
-         "Equity Research",
-         "Equity research tools",
-         {"rsrch", "research", "equity"},
-         "",
-         {"research", "equity", "fundamental"}},
-        {"screener",
-         "Screener",
-         "Stock screener",
-         {"scrn", "screener", "filter", "scan"},
-         "",
-         {"screener", "filter", "scan"}},
-        {"ma_analytics",
-         "M&A Analytics",
-         "Mergers and acquisitions",
-         {"ma", "mna", "mergers"},
-         "",
-         {"ma", "mergers", "acquisitions"}},
-        // Economics & Data
-        {"economics",
-         "Economics",
-         "Economic indicators",
-         {"econ", "economics", "indicators"},
-         "",
-         {"economics", "macro", "indicators"}},
+        {"profile", "Profile", "User profile & account", {"prof", "profile", "account"}, "F12", {"profile", "account", "user"}},
+        {"settings", "Settings", "Application settings", {"settings", "prefs", "config"}, "", {"settings", "preferences"}},
+        {"equity_trading", "Equity Trading", "Stock trading interface", {"eqtrade", "stocks", "equities"}, "", {"equity", "stocks", "trading"}},
+        {"algo_trading", "Algo Trading", "Algorithmic trading", {"algo", "algotrading"}, "", {"algo", "algorithmic", "automated"}},
+        {"equity_research", "Equity Research", "Equity research tools", {"rsrch", "research", "equity"}, "", {"research", "equity", "fundamental"}},
+        {"screener", "Screener", "Stock screener", {"scrn", "screener", "filter", "scan"}, "", {"screener", "filter", "scan"}},
+        {"ma_analytics", "M&A Analytics", "Mergers and acquisitions", {"ma", "mna", "mergers"}, "", {"ma", "mergers", "acquisitions"}},
+        {"economics", "Economics", "Economic indicators", {"econ", "economics", "indicators"}, "", {"economics", "macro", "indicators"}},
         {"asia_markets", "Asia Markets", "Asian market data", {"asia", "apac", "asian"}, "", {"asia", "asian", "apac"}},
-        // AI / Quant
-        {"agent_config",
-         "Agent Config",
-         "Configure AI agents",
-         {"agents", "agent", "config"},
-         "",
-         {"agents", "ai", "configuration"}},
-        // Tools
-        {"node_editor",
-         "Node Editor",
-         "Visual workflow editor",
-         {"nodes", "workflow", "node"},
-         "",
-         {"nodes", "workflow", "visual"}},
-        {"code_editor",
-         "Code Editor",
-         "Code development",
-         {"code", "editor", "dev"},
-         "",
-         {"code", "editor", "programming"}},
-        {"excel",
-         "Excel",
-         "Excel workbook integration",
-         {"excel", "spreadsheet", "xls"},
-         "",
-         {"excel", "spreadsheet", "workbook"}},
-        {"data_mapping",
-         "Data Mapping",
-         "API integration & schema transform",
-         {"datamap", "mapping", "schema"},
-         "",
-         {"data", "mapping", "schema", "api"}},
-        {"file_manager",
-         "File Manager",
-         "Browse and open files",
-         {"files", "file", "manager"},
-         "",
-         {"files", "manager", "browse"}},
-        // Community / Info
-        {"docs",
-         "Docs",
-         "Documentation and guides",
-         {"docs", "documentation", "guide"},
-         "",
-         {"docs", "documentation", "guide"}},
-        {"about",
-         "About",
-         "About Fincept Terminal",
-         {"about", "info", "version"},
-         "",
-         {"about", "information", "version"}},
+        {"node_editor", "Node Editor", "Visual workflow editor", {"nodes", "workflow", "node"}, "", {"nodes", "workflow", "visual"}},
+        {"code_editor", "Code Editor", "Code development", {"code", "editor", "dev"}, "", {"code", "editor", "programming"}},
+        {"excel", "Excel", "Excel workbook integration", {"excel", "spreadsheet", "xls"}, "", {"excel", "spreadsheet", "workbook"}},
+        {"data_mapping", "Data Mapping", "API integration & schema transform", {"datamap", "mapping", "schema"}, "", {"data", "mapping", "schema", "api"}},
+        {"file_manager", "File Manager", "Browse and open files", {"files", "file", "manager"}, "", {"files", "manager", "browse"}},
+        {"docs", "Docs", "Documentation and guides", {"docs", "documentation", "guide"}, "", {"docs", "documentation", "guide"}},
+        {"about", "About", "About Fincept Terminal", {"about", "info", "version"}, "", {"about", "information", "version"}},
     };
 }
-
-// ── asset type registry ──────────────────────────────────────────────────────
 
 void CommandBar::build_asset_types() {
     asset_types_ = {
@@ -322,45 +143,29 @@ void CommandBar::build_asset_types() {
     };
 }
 
-// ── screen command search ────────────────────────────────────────────────────
-
 QVector<ScreenCommand> CommandBar::search(const QString& query) const {
     if (query.trimmed().isEmpty())
         return {};
 
     const QString q = query.trimmed().toLower();
-
-    struct Scored {
-        int score;
-        const ScreenCommand* cmd;
-    };
+    struct Scored { int score; const ScreenCommand* cmd; };
     QVector<Scored> scored;
 
     for (const auto& cmd : commands_) {
         int score = 0;
         for (const auto& alias : cmd.aliases)
-            if (alias.toLower() == q) {
-                score = 100;
-                break;
-            }
+            if (alias.toLower() == q) { score = 100; break; }
         if (!score) {
             for (const auto& alias : cmd.aliases)
-                if (alias.toLower().startsWith(q)) {
-                    score = std::max(score, 80);
-                }
-            if (cmd.name.toLower().contains(q))
-                score = std::max(score, 70);
+                if (alias.toLower().startsWith(q)) score = std::max(score, 80);
+            if (cmd.name.toLower().contains(q)) score = std::max(score, 70);
             for (const auto& alias : cmd.aliases)
-                if (alias.toLower().contains(q))
-                    score = std::max(score, 60);
-            if (cmd.description.toLower().contains(q))
-                score = std::max(score, 40);
+                if (alias.toLower().contains(q)) score = std::max(score, 60);
+            if (cmd.description.toLower().contains(q)) score = std::max(score, 40);
             for (const auto& kw : cmd.keywords)
-                if (kw.toLower().contains(q))
-                    score = std::max(score, 30);
+                if (kw.toLower().contains(q)) score = std::max(score, 30);
         }
-        if (score > 0)
-            scored.append({score, &cmd});
+        if (score > 0) scored.append({score, &cmd});
     }
 
     std::sort(scored.begin(), scored.end(), [](const Scored& a, const Scored& b) { return a.score > b.score; });
@@ -370,8 +175,6 @@ QVector<ScreenCommand> CommandBar::search(const QString& query) const {
         result.append(*scored[i].cmd);
     return result;
 }
-
-// ── constructor ──────────────────────────────────────────────────────────────
 
 CommandBar::CommandBar(QWidget* parent) : QWidget(parent) {
     build_commands();
@@ -389,7 +192,6 @@ CommandBar::CommandBar(QWidget* parent) : QWidget(parent) {
     input_->installEventFilter(this);
     hl->addWidget(input_);
 
-    // Dropdown — true top-level floating window so it appears above all widgets
     dropdown_ = new QFrame(nullptr);
     dropdown_->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
     dropdown_->setAttribute(Qt::WA_ShowWithoutActivating);
@@ -408,7 +210,6 @@ CommandBar::CommandBar(QWidget* parent) : QWidget(parent) {
     vl->addWidget(list_);
     dropdown_->hide();
 
-    // Debounce timer for API search
     search_debounce_ = new QTimer(this);
     search_debounce_->setSingleShot(true);
     connect(search_debounce_, &QTimer::timeout, this, [this]() {
@@ -422,7 +223,6 @@ CommandBar::CommandBar(QWidget* parent) : QWidget(parent) {
     connect(list_, &QListWidget::itemClicked, this, &CommandBar::on_item_clicked);
     connect(list_, &QListWidget::itemEntered, this, &CommandBar::on_item_entered);
 
-    // Hide dropdown when app loses focus
     connect(qApp, &QApplication::focusChanged, this, [this](QWidget*, QWidget* now) {
         if (!now || (now != input_ && !dropdown_->isAncestorOf(now) && now != list_))
             hide_dropdown();
@@ -433,27 +233,18 @@ CommandBar::CommandBar(QWidget* parent) : QWidget(parent) {
 
     setup_key_actions();
 
-    // ── Draft persistence ────────────────────────────────────────────────────
-    // Debounce so every keystroke doesn't hit SQLite — 400 ms quiet period.
     draft_save_timer_ = new QTimer(this);
     draft_save_timer_->setSingleShot(true);
     draft_save_timer_->setInterval(400);
     connect(draft_save_timer_, &QTimer::timeout, this, &CommandBar::save_draft_now);
 
-    // Restore last draft after the full UI tree is wired up so text-changed
-    // logic (mode transitions, dropdown) re-establishes the right state.
     QTimer::singleShot(0, this, &CommandBar::restore_draft);
 }
-
-// ── Draft persistence (cache.db screen_state[key="command_bar"]) ────────────
 
 void CommandBar::restore_draft() {
     const QVariantMap s = ScreenStateManager::instance().load_direct("command_bar", kDraftStateVersion);
     if (s.isEmpty())
         return;
-
-    // Restore parser bookkeeping BEFORE setting text — on_text_changed() will
-    // see the right mode_ and dock_*/active_asset_type_ values.
     active_asset_type_ = s.value("active_asset_type").toString();
     dock_primary_id_ = s.value("dock_primary_id").toString();
     dock_verb_ = s.value("dock_verb").toString();
@@ -462,9 +253,6 @@ void CommandBar::restore_draft() {
     const QString text = s.value("text").toString();
     if (text.isEmpty())
         return;
-
-    // QLineEdit::setText() fires textChanged() which re-runs the parser.
-    // That will rebuild the correct dropdown for the restored mode.
     input_->setText(text);
     input_->setCursorPosition(text.length());
 }
@@ -472,13 +260,11 @@ void CommandBar::restore_draft() {
 void CommandBar::save_draft_now() {
     if (!input_)
         return;
-    const QVariantMap s{
-        {"text", input_->text()},
-        {"mode", static_cast<int>(mode_)},
-        {"active_asset_type", active_asset_type_},
-        {"dock_primary_id", dock_primary_id_},
-        {"dock_verb", dock_verb_},
-    };
+    const QVariantMap s{{"text", input_->text()},
+                        {"mode", static_cast<int>(mode_)},
+                        {"active_asset_type", active_asset_type_},
+                        {"dock_primary_id", dock_primary_id_},
+                        {"dock_verb", dock_verb_}};
     ScreenStateManager::instance().save_direct("command_bar", s, kDraftStateVersion);
 }
 
@@ -555,28 +341,16 @@ void CommandBar::setup_key_actions() {
 }
 
 void CommandBar::refresh_theme() {
-    if (input_)
-        input_->setStyleSheet(input_ss());
-    if (dropdown_)
-        dropdown_->setStyleSheet(drop_ss());
-    if (list_)
-        list_->setStyleSheet(list_ss());
+    if (input_) input_->setStyleSheet(input_ss());
+    if (dropdown_) dropdown_->setStyleSheet(drop_ss());
+    if (list_) list_->setStyleSheet(list_ss());
 }
-
-// ── event filter (keyboard nav in input) ─────────────────────────────────────
 
 bool CommandBar::eventFilter(QObject* obj, QEvent* event) {
     if (obj != input_ || event->type() != QEvent::KeyPress)
         return QWidget::eventFilter(obj, event);
-
-    auto* ke = static_cast<QKeyEvent*>(event);
-    const int count = list_->count();
-
-    // Navigation keys are handled via KeyConfigManager QActions (connected in setup_key_actions)
     return QWidget::eventFilter(obj, event);
 }
-
-// ── slots ────────────────────────────────────────────────────────────────────
 
 void CommandBar::on_text_changed(const QString& text) {
     const QString trimmed = text.trimmed();
@@ -589,12 +363,9 @@ void CommandBar::on_text_changed(const QString& text) {
         return;
     }
 
-    // ── Check if user is in asset search mode (e.g. "/stock AAPL") ──────────
     if (mode_ == Mode::AssetSearch && !active_asset_type_.isEmpty()) {
-        // Find the space after the slash-type prefix
         const int space_idx = trimmed.indexOf(' ');
         if (space_idx < 0) {
-            // User deleted back to just "/stock" — revert to slash picker
             if (trimmed.startsWith("/")) {
                 mode_ = Mode::SlashPicker;
                 show_slash_suggestions(trimmed);
@@ -606,7 +377,6 @@ void CommandBar::on_text_changed(const QString& text) {
         }
         const QString query = trimmed.mid(space_idx + 1).trimmed();
         if (query.isEmpty()) {
-            // Just "/stock " with nothing after — show hint
             list_->clear();
             auto* item = new QListWidgetItem(list_);
             item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
@@ -615,9 +385,8 @@ void CommandBar::on_text_changed(const QString& text) {
             auto* rl = new QHBoxLayout(row);
             rl->setContentsMargins(10, 6, 10, 6);
             auto* hint = new QLabel(QString("Type a symbol or name to search %1s...").arg(active_asset_type_));
-            hint->setStyleSheet(
-                QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
-                    .arg(colors::TEXT_TERTIARY.get()));
+            hint->setStyleSheet(QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
+                                    .arg(colors::TEXT_TERTIARY.get()));
             rl->addWidget(hint);
             item->setSizeHint(QSize(0, 30));
             list_->setItemWidget(item, row);
@@ -628,10 +397,7 @@ void CommandBar::on_text_changed(const QString& text) {
         return;
     }
 
-    // ── Slash prefix detection ──────────────────────────────────────────────
     if (trimmed.startsWith("/")) {
-        // Check if the user has completed a type and started typing a query
-        // e.g. "/stock AAPL" — the space separates type from query
         const int space_idx = trimmed.indexOf(' ');
         if (space_idx > 0) {
             const QString slash_part = trimmed.left(space_idx).toLower();
@@ -639,22 +405,17 @@ void CommandBar::on_text_changed(const QString& text) {
                 if (at.slash == slash_part) {
                     activate_asset_mode(at.api_type);
                     const QString query = trimmed.mid(space_idx + 1).trimmed();
-                    if (!query.isEmpty())
-                        schedule_asset_search(query);
+                    if (!query.isEmpty()) schedule_asset_search(query);
                     return;
                 }
             }
         }
-        // Still picking the slash type
         mode_ = Mode::SlashPicker;
         show_slash_suggestions(trimmed);
         return;
     }
 
-    // ── DockSecondary: user picked a verb and is typing the second screen ──────
     if (mode_ == Mode::DockSecondary && !dock_primary_id_.isEmpty() && !dock_verb_.isEmpty()) {
-        // Text looks like: "<primary> <verb> <partial>"
-        // Find the verb position and extract everything after it
         const QString lower = trimmed.toLower();
         for (const QString& v : {QString("add"), QString("replace")}) {
             const int vi = lower.indexOf(" " + v + " ");
@@ -663,7 +424,6 @@ void CommandBar::on_text_changed(const QString& text) {
                 show_dock_secondary_suggestions(v, partial);
                 return;
             }
-            // verb at end with no second token yet
             if (lower.endsWith(" " + v)) {
                 show_dock_secondary_suggestions(v, {});
                 return;
@@ -671,11 +431,8 @@ void CommandBar::on_text_changed(const QString& text) {
         }
     }
 
-    // ── DockCommand: user already resolved primary, picking verb ────────────
     if (mode_ == Mode::DockCommand && !dock_primary_id_.isEmpty()) {
-        // Stay in DockCommand until they type something non-verb-like
         const QString after_space = trimmed.mid(trimmed.indexOf(' ') + 1).toLower().trimmed();
-        // If they've typed "add " or "replace " transition to DockSecondary
         if (after_space.startsWith("add ") || after_space.startsWith("replace ")) {
             dock_verb_ = after_space.startsWith("add") ? "add" : "replace";
             mode_ = Mode::DockSecondary;
@@ -683,22 +440,18 @@ void CommandBar::on_text_changed(const QString& text) {
             show_dock_secondary_suggestions(dock_verb_, partial);
             return;
         }
-        // Still picking verb — re-show verb suggestions
         show_dock_verb_suggestions(dock_primary_id_);
         return;
     }
 
-    // ── Detect "<valid_screen> " (space after a known screen) ───────────────
     if (trimmed.endsWith(' ') || trimmed.contains(' ')) {
         const int space = trimmed.indexOf(' ');
         if (space > 0) {
             const QString first_token = trimmed.left(space);
             const QString resolved = resolve_screen_id(first_token);
             if (!resolved.isEmpty()) {
-                // Check if the second token is "remove" — that's a complete command
                 const QString rest = trimmed.mid(space + 1).trimmed().toLower();
                 if (rest == "remove") {
-                    // Show hint that Enter will execute
                     list_->clear();
                     auto* item = new QListWidgetItem(list_);
                     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
@@ -708,8 +461,7 @@ void CommandBar::on_text_changed(const QString& text) {
                     hl2->setContentsMargins(10, 6, 10, 6);
                     auto* lbl = new QLabel(QString("Press Enter to close all except %1")
                                                .arg(resolve_screen_id(first_token).toUpper().replace("_", " ")));
-                    lbl->setStyleSheet(QString("color:%1;font-size:11px;"
-                                               "font-family:'Consolas',monospace;background:transparent;")
+                    lbl->setStyleSheet(QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
                                            .arg(colors::AMBER.get()));
                     hl2->addWidget(lbl);
                     item->setSizeHint(QSize(0, 30));
@@ -719,7 +471,6 @@ void CommandBar::on_text_changed(const QString& text) {
                     mode_ = Mode::DockCommand;
                     return;
                 }
-                // Transition to DockCommand — show verb suggestions
                 if (rest.isEmpty() || rest == "a" || rest == "ad" || rest == "r" || rest == "re" || rest == "rep") {
                     dock_primary_id_ = resolved;
                     dock_verb_.clear();
@@ -727,7 +478,6 @@ void CommandBar::on_text_changed(const QString& text) {
                     show_dock_verb_suggestions(resolved);
                     return;
                 }
-                // They're typing "add X" or "replace X"
                 if (rest.startsWith("add") || rest.startsWith("replace")) {
                     dock_primary_id_ = resolved;
                     const QString verb = rest.startsWith("add") ? "add" : "replace";
@@ -742,7 +492,6 @@ void CommandBar::on_text_changed(const QString& text) {
         }
     }
 
-    // ── Normal screen command search ────────────────────────────────────────
     mode_ = Mode::Screen;
     dock_primary_id_.clear();
     dock_verb_.clear();
@@ -767,18 +516,15 @@ void CommandBar::on_text_changed(const QString& text) {
         hl->setSpacing(6);
 
         auto* alias_lbl = new QLabel(cmd.aliases.first().toUpper());
-        alias_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-weight:700;"
-                                         "font-family:'Consolas',monospace;background:transparent;")
+        alias_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-weight:700;font-family:'Consolas',monospace;background:transparent;")
                                      .arg(colors::TEXT_PRIMARY.get()));
         alias_lbl->setFixedWidth(72);
 
         auto* sep_lbl = new QLabel(QStringLiteral("\u203A"));
-        sep_lbl->setStyleSheet(
-            QString("color:%1;font-size:12px;background:transparent;").arg(colors::TEXT_TERTIARY.get()));
+        sep_lbl->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(colors::TEXT_TERTIARY.get()));
 
         auto* name_lbl = new QLabel(cmd.name);
-        name_lbl->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;"
-                                        "font-family:'Consolas',monospace;")
+        name_lbl->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;font-family:'Consolas',monospace;")
                                     .arg(colors::TEXT_SECONDARY.get()));
 
         hl->addWidget(alias_lbl);
@@ -787,8 +533,7 @@ void CommandBar::on_text_changed(const QString& text) {
 
         if (!cmd.shortcut.isEmpty()) {
             auto* sc_lbl = new QLabel(cmd.shortcut);
-            sc_lbl->setStyleSheet(QString("color:%1;font-size:10px;font-family:'Consolas',monospace;"
-                                          "background:transparent;")
+            sc_lbl->setStyleSheet(QString("color:%1;font-size:10px;font-family:'Consolas',monospace;background:transparent;")
                                       .arg(colors::TEXT_DIM.get()));
             hl->addWidget(sc_lbl);
         }
@@ -802,26 +547,17 @@ void CommandBar::on_text_changed(const QString& text) {
 }
 
 void CommandBar::on_return_pressed() {
-    // In asset-search or slash-picker modes, Enter must never fall through to
-    // screen navigation — the user has to explicitly pick an asset from the list.
     if (mode_ == Mode::AssetSearch) {
         auto* item = list_->currentItem();
-        if (!item)
-            return;
+        if (!item) return;
         const QString symbol = item->data(Qt::UserRole).toString();
         const QString type = item->data(Qt::UserRole + 2).toString();
-        // Only navigate if this item is an actual asset result (has a symbol)
-        if (!symbol.isEmpty())
-            select_asset(symbol, type);
-        // else: hint or "no results" row — do nothing, keep waiting for input
+        if (!symbol.isEmpty()) select_asset(symbol, type);
         return;
     }
 
-    // ── Try compound dock command from typed text in any dock-related mode ──
     if (!dropdown_->isVisible() || !list_->currentItem()) {
         const QString text = input_->text().trimmed();
-        // Try compound dock command: "X add Y", "X replace Y", "X remove"
-        // Works from Screen, DockCommand, or DockSecondary modes
         if (mode_ == Mode::Screen || mode_ == Mode::DockCommand || mode_ == Mode::DockSecondary) {
             if (try_parse_dock_command(text)) {
                 mode_ = Mode::Screen;
@@ -831,7 +567,6 @@ void CommandBar::on_return_pressed() {
             }
         }
         if (mode_ == Mode::Screen) {
-            // Fall back to simple screen navigation
             const auto results = search(text);
             if (!results.isEmpty()) {
                 emit navigate_to(results.first().id);
@@ -844,9 +579,7 @@ void CommandBar::on_return_pressed() {
     }
 
     auto* item = list_->currentItem();
-
     if (mode_ == Mode::SlashPicker) {
-        // User pressed Enter on a slash-type suggestion — activate that asset mode
         const QString slash = item->data(Qt::UserRole + 1).toString();
         for (const auto& at : asset_types_) {
             if (at.slash == slash) {
@@ -859,7 +592,6 @@ void CommandBar::on_return_pressed() {
         return;
     }
 
-    // ── DockCommand: user pressed Enter on a verb suggestion ────────────
     if (mode_ == Mode::DockCommand) {
         const QString verb = item->data(Qt::UserRole).toString();
         const QString primary = item->data(Qt::UserRole + 1).toString();
@@ -872,7 +604,6 @@ void CommandBar::on_return_pressed() {
             hide_dropdown();
             input_->clearFocus();
         } else {
-            // Transition to secondary — append verb to input
             dock_verb_ = verb;
             mode_ = Mode::DockSecondary;
             const QString current = input_->text().trimmed();
@@ -883,11 +614,9 @@ void CommandBar::on_return_pressed() {
         return;
     }
 
-    // ── DockSecondary: user pressed Enter on a secondary screen ─────────
     if (mode_ == Mode::DockSecondary) {
         const QString secondary_id = item->data(Qt::UserRole).toString();
-        if (secondary_id.isEmpty())
-            return; // header row
+        if (secondary_id.isEmpty()) return;
         emit dock_command(dock_verb_, dock_primary_id_, secondary_id);
         input_->clear();
         mode_ = Mode::Screen;
@@ -898,14 +627,11 @@ void CommandBar::on_return_pressed() {
         return;
     }
 
-    // Screen mode — navigate to the selected screen
     execute_index(list_->currentRow());
 }
 
 void CommandBar::on_item_clicked(QListWidgetItem* item) {
-    if (!item)
-        return;
-
+    if (!item) return;
     if (mode_ == Mode::SlashPicker) {
         const QString slash = item->data(Qt::UserRole + 1).toString();
         for (const auto& at : asset_types_) {
@@ -923,13 +649,11 @@ void CommandBar::on_item_clicked(QListWidgetItem* item) {
     if (mode_ == Mode::AssetSearch) {
         const QString symbol = item->data(Qt::UserRole).toString();
         const QString type = item->data(Qt::UserRole + 2).toString();
-        if (!symbol.isEmpty())
-            select_asset(symbol, type);
+        if (!symbol.isEmpty()) select_asset(symbol, type);
         return;
     }
 
     if (mode_ == Mode::DockCommand) {
-        // User clicked a verb (add/replace/remove)
         const QString verb = item->data(Qt::UserRole).toString();
         const QString primary = item->data(Qt::UserRole + 1).toString();
         if (verb == "remove") {
@@ -941,7 +665,6 @@ void CommandBar::on_item_clicked(QListWidgetItem* item) {
             hide_dropdown();
             input_->clearFocus();
         } else {
-            // Transition to secondary — append verb to input
             dock_verb_ = verb;
             mode_ = Mode::DockSecondary;
             const QString current = input_->text().trimmed();
@@ -955,8 +678,7 @@ void CommandBar::on_item_clicked(QListWidgetItem* item) {
 
     if (mode_ == Mode::DockSecondary) {
         const QString secondary_id = item->data(Qt::UserRole).toString();
-        if (secondary_id.isEmpty())
-            return; // header row
+        if (secondary_id.isEmpty()) return;
         emit dock_command(dock_verb_, dock_primary_id_, secondary_id);
         input_->clear();
         mode_ = Mode::Screen;
@@ -967,7 +689,6 @@ void CommandBar::on_item_clicked(QListWidgetItem* item) {
         return;
     }
 
-    // Screen mode
     emit navigate_to(item->data(Qt::UserRole).toString());
     input_->clear();
     mode_ = Mode::Screen;
@@ -978,16 +699,11 @@ void CommandBar::on_item_entered(QListWidgetItem* item) {
     list_->setCurrentItem(item);
 }
 
-// ── slash-command helpers ────────────────────────────────────────────────────
-
 void CommandBar::show_slash_suggestions(const QString& partial) {
     const QString q = partial.toLower();
-
     list_->clear();
     for (const auto& at : asset_types_) {
-        if (!at.slash.startsWith(q) && q != "/")
-            continue;
-
+        if (!at.slash.startsWith(q) && q != "/") continue;
         auto* item = new QListWidgetItem(list_);
         item->setData(Qt::UserRole, at.api_type);
         item->setData(Qt::UserRole + 1, at.slash);
@@ -999,18 +715,15 @@ void CommandBar::show_slash_suggestions(const QString& partial) {
         hl->setSpacing(8);
 
         auto* slash_lbl = new QLabel(at.slash);
-        slash_lbl->setStyleSheet(QString("color:%1;font-size:12px;font-weight:700;"
-                                         "font-family:'Consolas',monospace;background:transparent;")
+        slash_lbl->setStyleSheet(QString("color:%1;font-size:12px;font-weight:700;font-family:'Consolas',monospace;background:transparent;")
                                      .arg(colors::AMBER.get()));
         slash_lbl->setFixedWidth(80);
 
         auto* sep_lbl = new QLabel(QStringLiteral("\u203A"));
-        sep_lbl->setStyleSheet(
-            QString("color:%1;font-size:12px;background:transparent;").arg(colors::TEXT_TERTIARY.get()));
+        sep_lbl->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(colors::TEXT_TERTIARY.get()));
 
         auto* desc_lbl = new QLabel(at.description);
-        desc_lbl->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;"
-                                        "font-family:'Consolas',monospace;")
+        desc_lbl->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;font-family:'Consolas',monospace;")
                                     .arg(colors::TEXT_SECONDARY.get()));
 
         hl->addWidget(slash_lbl);
@@ -1045,25 +758,18 @@ void CommandBar::fire_asset_search(const QString& query) {
 
     QPointer<CommandBar> self = this;
     HttpClient::instance().get(url, [self, query](Result<QJsonDocument> result) {
-        if (!self)
-            return;
-        // Only process if user hasn't changed the query since we fired
-        if (self->pending_query_ != query)
-            return;
-        if (!result.is_ok())
-            return;
+        if (!self) return;
+        if (self->pending_query_ != query) return;
+        if (!result.is_ok()) return;
 
         const auto doc = result.value();
         QJsonArray arr;
         if (doc.isArray()) {
             arr = doc.array();
         } else if (doc.isObject()) {
-            // API might wrap results in { "results": [...] } or { "data": [...] }
             const auto obj = doc.object();
-            if (obj.contains("results"))
-                arr = obj["results"].toArray();
-            else if (obj.contains("data"))
-                arr = obj["data"].toArray();
+            if (obj.contains("results")) arr = obj["results"].toArray();
+            else if (obj.contains("data")) arr = obj["data"].toArray();
         }
         self->on_asset_results(arr);
     });
@@ -1097,16 +803,13 @@ void CommandBar::on_asset_results(const QJsonArray& results) {
         const QString country = obj["country"].toString();
         const QString type = obj["type"].toString(active_asset_type_);
 
-        if (symbol.isEmpty())
-            continue;
-
-        // Convert to yfinance-compatible ticker (e.g. RELIANCE → RELIANCE.NS)
+        if (symbol.isEmpty()) continue;
         const QString yf_symbol = to_yfinance_symbol(symbol, exchange, country);
 
         auto* item = new QListWidgetItem(list_);
-        item->setData(Qt::UserRole, yf_symbol);     // yfinance symbol for loading
-        item->setData(Qt::UserRole + 1, yf_symbol); // for Tab autocomplete
-        item->setData(Qt::UserRole + 2, type);      // asset type
+        item->setData(Qt::UserRole, yf_symbol);
+        item->setData(Qt::UserRole + 1, yf_symbol);
+        item->setData(Qt::UserRole + 2, type);
 
         auto* row = new QWidget;
         row->setStyleSheet("background:transparent;");
@@ -1115,14 +818,12 @@ void CommandBar::on_asset_results(const QJsonArray& results) {
         hl->setSpacing(8);
 
         auto* sym_lbl = new QLabel(yf_symbol);
-        sym_lbl->setStyleSheet(QString("color:%1;font-size:12px;font-weight:700;"
-                                       "font-family:'Consolas',monospace;background:transparent;")
+        sym_lbl->setStyleSheet(QString("color:%1;font-size:12px;font-weight:700;font-family:'Consolas',monospace;background:transparent;")
                                    .arg(colors::TEXT_PRIMARY.get()));
         sym_lbl->setFixedWidth(110);
 
         auto* name_lbl = new QLabel(name);
-        name_lbl->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;"
-                                        "font-family:'Consolas',monospace;")
+        name_lbl->setStyleSheet(QString("color:%1;font-size:11px;background:transparent;font-family:'Consolas',monospace;")
                                     .arg(colors::TEXT_SECONDARY.get()));
         name_lbl->setMaximumWidth(200);
 
@@ -1131,17 +832,13 @@ void CommandBar::on_asset_results(const QJsonArray& results) {
 
         if (!exchange.isEmpty()) {
             auto* exch_lbl = new QLabel(exchange);
-            exch_lbl->setStyleSheet(QString("color:%1;font-size:10px;font-family:'Consolas',monospace;"
-                                            "background:transparent;")
+            exch_lbl->setStyleSheet(QString("color:%1;font-size:10px;font-family:'Consolas',monospace;background:transparent;")
                                         .arg(colors::TEXT_TERTIARY.get()));
             hl->addWidget(exch_lbl);
         }
 
-        // Type badge
         auto* type_lbl = new QLabel(type.toUpper());
-        type_lbl->setStyleSheet(QString("color:%1;font-size:9px;font-weight:700;"
-                                        "font-family:'Consolas',monospace;background:%2;"
-                                        "padding:1px 4px;border-radius:2px;")
+        type_lbl->setStyleSheet(QString("color:%1;font-size:9px;font-weight:700;font-family:'Consolas',monospace;background:%2;padding:1px 4px;border-radius:2px;")
                                     .arg(colors::AMBER.get())
                                     .arg(colors::BG_RAISED.get()));
         hl->addWidget(type_lbl);
@@ -1164,35 +861,21 @@ void CommandBar::select_asset(const QString& symbol, const QString& type) {
     hide_dropdown();
     input_->clearFocus();
 
-    // Navigate to equity_research and tell it to load the symbol
     emit navigate_to("equity_research");
-    EventBus::instance().publish("equity_research.load_symbol", {
-                                                                    {"symbol", symbol},
-                                                                    {"type", type},
-                                                                });
+    EventBus::instance().publish("equity_research.load_symbol", {{"symbol", symbol}, {"type", type}});
 }
 
-// ── dropdown helpers ─────────────────────────────────────────────────────────
-
 void CommandBar::show_dock_verb_suggestions(const QString& primary_id) {
-    // Show add / replace / remove as clickable suggestions after "<screen> "
     list_->clear();
-
-    struct Verb {
-        QString verb;
-        QString label;
-        QString hint;
-    };
-    const QList<Verb> verbs = {
-        {"add", "ADD", "Open a second screen alongside"},
-        {"replace", "REPLACE", "Close this screen, open another"},
-        {"remove", "REMOVE", "Close all other screens"},
-    };
+    struct Verb { QString verb; QString label; QString hint; };
+    const QList<Verb> verbs = {{"add", "ADD", "Open a second screen alongside"},
+                               {"replace", "REPLACE", "Close this screen, open another"},
+                               {"remove", "REMOVE", "Close all other screens"}};
 
     for (const auto& v : verbs) {
         auto* item = new QListWidgetItem(list_);
-        item->setData(Qt::UserRole, v.verb);         // verb
-        item->setData(Qt::UserRole + 1, primary_id); // primary screen id
+        item->setData(Qt::UserRole, v.verb);
+        item->setData(Qt::UserRole + 1, primary_id);
 
         auto* row = new QWidget;
         row->setStyleSheet("background:transparent;");
@@ -1201,8 +884,7 @@ void CommandBar::show_dock_verb_suggestions(const QString& primary_id) {
         hl->setSpacing(8);
 
         auto* verb_lbl = new QLabel(v.verb.toUpper());
-        verb_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-weight:700;"
-                                        "font-family:'Consolas',monospace;background:transparent;")
+        verb_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-weight:700;font-family:'Consolas',monospace;background:transparent;")
                                     .arg(colors::AMBER.get()));
         verb_lbl->setFixedWidth(64);
 
@@ -1210,9 +892,8 @@ void CommandBar::show_dock_verb_suggestions(const QString& primary_id) {
         sep->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(colors::TEXT_TERTIARY.get()));
 
         auto* hint_lbl = new QLabel(v.hint);
-        hint_lbl->setStyleSheet(
-            QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
-                .arg(colors::TEXT_SECONDARY.get()));
+        hint_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
+                                    .arg(colors::TEXT_SECONDARY.get()));
 
         hl->addWidget(verb_lbl);
         hl->addWidget(sep);
@@ -1226,11 +907,9 @@ void CommandBar::show_dock_verb_suggestions(const QString& primary_id) {
 }
 
 void CommandBar::show_dock_secondary_suggestions(const QString& verb, const QString& partial) {
-    // Show filtered screen list as the second screen for add/replace
     const auto results = search(partial.trimmed().isEmpty() ? QString() : partial);
     list_->clear();
 
-    // Header hint row
     {
         auto* item = new QListWidgetItem(list_);
         item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
@@ -1259,8 +938,7 @@ void CommandBar::show_dock_secondary_suggestions(const QString& verb, const QStr
         hl->setSpacing(6);
 
         auto* alias_lbl = new QLabel(cmd.aliases.first().toUpper());
-        alias_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-weight:700;"
-                                         "font-family:'Consolas',monospace;background:transparent;")
+        alias_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-weight:700;font-family:'Consolas',monospace;background:transparent;")
                                      .arg(colors::TEXT_PRIMARY.get()));
         alias_lbl->setFixedWidth(72);
 
@@ -1268,9 +946,8 @@ void CommandBar::show_dock_secondary_suggestions(const QString& verb, const QStr
         sep->setStyleSheet(QString("color:%1;font-size:12px;background:transparent;").arg(colors::TEXT_TERTIARY.get()));
 
         auto* name_lbl = new QLabel(cmd.name);
-        name_lbl->setStyleSheet(
-            QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
-                .arg(colors::TEXT_SECONDARY.get()));
+        name_lbl->setStyleSheet(QString("color:%1;font-size:11px;font-family:'Consolas',monospace;background:transparent;")
+                                    .arg(colors::TEXT_SECONDARY.get()));
 
         hl->addWidget(alias_lbl);
         hl->addWidget(sep);
@@ -1279,45 +956,28 @@ void CommandBar::show_dock_secondary_suggestions(const QString& verb, const QStr
         list_->setItemWidget(item, row);
     }
 
-    if (list_->count() > 1)
-        list_->setCurrentRow(1); // skip header
+    if (list_->count() > 1) list_->setCurrentRow(1);
     show_dropdown();
 }
 
 QString CommandBar::resolve_screen_id(const QString& token) const {
     const QString t = token.trimmed().toLower();
-    // Direct id match
-    for (const auto& cmd : commands_)
-        if (cmd.id == t)
-            return cmd.id;
-    // Alias / name match (same logic as search())
+    for (const auto& cmd : commands_) if (cmd.id == t) return cmd.id;
     for (const auto& cmd : commands_) {
-        if (cmd.name.toLower() == t)
-            return cmd.id;
-        for (const auto& a : cmd.aliases)
-            if (a.toLower() == t)
-                return cmd.id;
+        if (cmd.name.toLower() == t) return cmd.id;
+        for (const auto& a : cmd.aliases) if (a.toLower() == t) return cmd.id;
     }
-    // Keyword prefix
     const auto results = search(t);
-    if (!results.isEmpty())
-        return results.first().id;
+    if (!results.isEmpty()) return results.first().id;
     return {};
 }
 
 bool CommandBar::try_parse_dock_command(const QString& text) {
-    // Not active during asset search or slash picker
-    if (mode_ == Mode::AssetSearch || mode_ == Mode::SlashPicker)
-        return false;
+    if (mode_ == Mode::AssetSearch || mode_ == Mode::SlashPicker) return false;
 
     const QString t = text.trimmed();
-
-    // Match: "<primary> add <secondary>"
     static const QRegularExpression re_add(R"(^(.+?)\s+add\s+(.+)$)", QRegularExpression::CaseInsensitiveOption);
-    // Match: "<primary> replace <secondary>"
-    static const QRegularExpression re_replace(R"(^(.+?)\s+replace\s+(.+)$)",
-                                               QRegularExpression::CaseInsensitiveOption);
-    // Match: "<primary> remove"
+    static const QRegularExpression re_replace(R"(^(.+?)\s+replace\s+(.+)$)", QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression re_remove(R"(^(.+?)\s+remove$)", QRegularExpression::CaseInsensitiveOption);
 
     auto m_add = re_add.match(t);
@@ -1327,33 +987,24 @@ bool CommandBar::try_parse_dock_command(const QString& text) {
     if (m_add.hasMatch()) {
         const QString primary = resolve_screen_id(m_add.captured(1));
         const QString secondary = resolve_screen_id(m_add.captured(2));
-        if (primary.isEmpty() || secondary.isEmpty())
-            return false;
+        if (primary.isEmpty() || secondary.isEmpty()) return false;
         emit dock_command("add", primary, secondary);
-        input_->clear();
-        hide_dropdown();
-        input_->clearFocus();
+        input_->clear(); hide_dropdown(); input_->clearFocus();
         return true;
     }
     if (m_replace.hasMatch()) {
         const QString primary = resolve_screen_id(m_replace.captured(1));
         const QString secondary = resolve_screen_id(m_replace.captured(2));
-        if (primary.isEmpty() || secondary.isEmpty())
-            return false;
+        if (primary.isEmpty() || secondary.isEmpty()) return false;
         emit dock_command("replace", primary, secondary);
-        input_->clear();
-        hide_dropdown();
-        input_->clearFocus();
+        input_->clear(); hide_dropdown(); input_->clearFocus();
         return true;
     }
     if (m_remove.hasMatch()) {
         const QString primary = resolve_screen_id(m_remove.captured(1));
-        if (primary.isEmpty())
-            return false;
+        if (primary.isEmpty()) return false;
         emit dock_command("remove", primary, {});
-        input_->clear();
-        hide_dropdown();
-        input_->clearFocus();
+        input_->clear(); hide_dropdown(); input_->clearFocus();
         return true;
     }
     return false;
@@ -1361,8 +1012,7 @@ bool CommandBar::try_parse_dock_command(const QString& text) {
 
 void CommandBar::execute_index(int index) {
     auto* item = list_->item(index);
-    if (!item)
-        return;
+    if (!item) return;
     emit navigate_to(item->data(Qt::UserRole).toString());
     input_->clear();
     mode_ = Mode::Screen;
@@ -1386,8 +1036,6 @@ void CommandBar::update_position() {
     const int w = std::max(input_->width(), 360);
     const int rows = list_->count();
     const int h = std::min(rows * 32, 320);
-
-    // dropdown_ is a top-level window — move() takes screen-global coordinates
     dropdown_->move(global_pos);
     dropdown_->resize(w, h);
 }
