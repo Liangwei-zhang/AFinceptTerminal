@@ -34,7 +34,6 @@ QString DockScreenRouter::title_for_id(const QString& id) {
         {"economics", "Economics"},
         {"asia_markets", "Asia Markets"},
         {"ma_analytics", "M&A Analytics"},
-        {"agent_config", "Agent Config"},
         {"node_editor", "Node Editor"},
         {"code_editor", "Code Editor"},
         {"excel", "Excel"},
@@ -58,8 +57,6 @@ DockScreenRouter::DockScreenRouter(ads::CDockManager* manager, QObject* parent) 
 }
 
 void DockScreenRouter::register_screen(const QString& id, QWidget* screen) {
-    // Store the screen widget — the CDockWidget is only created on first navigate().
-    // This prevents all eagerly registered screens from appearing at startup.
     screens_[id] = screen;
     factories_.remove(id);
 }
@@ -75,7 +72,6 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
 
     bool needs_add = false;
     if (!dw) {
-        // Screen not yet in dock manager — check if we know how to create it
         if (!factories_.contains(id) && !screens_.contains(id)) {
             LOG_WARN("DockRouter", "Unknown screen: " + id);
             return;
@@ -83,9 +79,6 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
         dw = create_dock_widget(id);
         needs_add = true;
     } else if (!dw->dockManager()) {
-        // Widget exists but was never added to the dock manager (pre-created
-        // by ensure_all_registered for state restore, but restoreState was
-        // skipped or didn't place this widget).
         needs_add = true;
     }
 
@@ -115,26 +108,14 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
         panel_count_ = 0;
     }
 
-    // Determine whether this widget needs to be physically placed into a new
-    // split area, or whether it already has its own dedicated area.
-    //
-    // ensure_all_registered() pre-creates every dock widget and groups them all
-    // into a SINGLE shared dock area (all hidden). We detect this by checking
-    // whether dw's area contains other dock widgets (shared) vs being solo.
-    // We check dockWidgets() (all, not just open) because ensure_all_registered
-    // hides them all — openedDockWidgets() would be empty and miss the poisoning.
     auto* existing_area = dw->dockAreaWidget();
     const bool area_is_poisoned = existing_area && existing_area->dockWidgets().size() > 1;
     const bool must_place = needs_add || !existing_area || area_is_poisoned;
 
-    // ── Helper: sync grid tracking from currently open areas ────────────────
-    // After restoreState(), exclusive navigate, or user drag, the grid pointers
-    // may be stale. This lambda rebuilds them from whatever ADS actually has.
     auto sync_grid_from_reality = [this]() {
         const auto opened = manager_->openedDockAreas();
         panel_count_ = std::min(static_cast<int>(opened.size()), 4);
 
-        // Invalidate pointers that no longer exist
         if (grid_top_left_ && !opened.contains(grid_top_left_))
             grid_top_left_ = nullptr;
         if (grid_top_right_ && !opened.contains(grid_top_right_))
@@ -144,7 +125,6 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
         if (grid_bottom_right_ && !opened.contains(grid_bottom_right_))
             grid_bottom_right_ = nullptr;
 
-        // Fill in missing pointers from opened areas
         int idx = 0;
         if (!grid_top_left_ && idx < opened.size())
             grid_top_left_ = opened.at(idx);
@@ -171,14 +151,12 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
     };
 
     if (exclusive) {
-        // Exclusive: place into full container (always, regardless of must_place)
         auto* area = manager_->addDockWidget(ads::CenterDockWidgetArea, dw);
         grid_top_left_ = area;
         grid_top_right_ = grid_bottom_left_ = grid_bottom_right_ = nullptr;
         panel_count_ = 1;
 
     } else if (must_place) {
-        // Sync grid from reality before placing
         sync_grid_from_reality();
 
         LOG_INFO("DockRouter", QString("GRID [%1] must_place panel_count=%2").arg(id).arg(panel_count_));
@@ -208,7 +186,6 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
             panel_count_ = 4;
 
         } else {
-            // 5th+ panel or missing grid pointer: tab into last area
             LOG_INFO("DockRouter", QString("GRID [%1] -> tab into last (panel_count=%2)").arg(id).arg(panel_count_));
             ads::CDockAreaWidget* target =
                 grid_bottom_right_
@@ -222,21 +199,11 @@ void DockScreenRouter::navigate(const QString& id, bool exclusive) {
         }
 
     } else {
-        // Widget already has a dedicated area — just show it.
-        // But sync grid tracking so it knows about this area for future placements.
         LOG_INFO("DockRouter", QString("GRID [%1] already placed, syncing grid").arg(id));
         sync_grid_from_reality();
     }
 
-    // Always call toggleView(true) — addDockWidget() marks the widget as
-    // not-closed but does NOT make the tab visible. Without this unconditional
-    // call, the tab stays hidden because isClosed() returns false and the
-    // previous conditional `if (isClosed()) toggleView(true)` was skipped.
     dw->toggleView(true);
-    // ADS does not restore CDockWidgetTab visibility when toggleView(true)
-    // re-opens a previously hidden widget — the tab stays hidden from the
-    // ensure_all_registered() phase where all widgets were toggleView(false)'d.
-    // Force the tab visible so the label text appears in the title bar.
     if (auto* tab = dw->tabWidget()) {
         if (tab->isHidden())
             tab->setVisible(true);
@@ -268,7 +235,6 @@ void DockScreenRouter::tab_into(const QString& id) {
 
     materialize_screen(id);
 
-    // If already visible somewhere just raise it — no need to re-tab.
     if (!dw->isClosed() && dw->dockAreaWidget()) {
         dw->raise();
         dw->setAsCurrentTab();
@@ -277,8 +243,6 @@ void DockScreenRouter::tab_into(const QString& id) {
         return;
     }
 
-    // Find the focused/active dock area to tab into.
-    // Prefer the focused widget's area; fall back to the first open area.
     ads::CDockAreaWidget* target_area = nullptr;
     if (auto* focused = manager_->focusedDockWidget())
         target_area = focused->dockAreaWidget();
@@ -290,10 +254,8 @@ void DockScreenRouter::tab_into(const QString& id) {
 
     if (needs_add || !dw->dockAreaWidget()) {
         if (target_area)
-            // Tab into the existing area — CenterDockWidgetArea = same area, new tab
             manager_->addDockWidget(ads::CenterDockWidgetArea, dw, target_area);
         else
-            // No area open yet — open as the sole screen
             manager_->addDockWidget(ads::CenterDockWidgetArea, dw);
     }
 
@@ -312,9 +274,6 @@ void DockScreenRouter::tab_into(const QString& id) {
 }
 
 void DockScreenRouter::add_alongside(const QString& primary, const QString& secondary) {
-    // If primary is already open, just add secondary into the next grid slot
-    // without resetting the layout. This allows building up to a 2x2 grid
-    // (4 panels) incrementally via repeated "add" commands.
     auto* primary_dw = find_dock_widget(primary);
     bool primary_visible = primary_dw && !primary_dw->isClosed() && primary_dw->dockAreaWidget();
 
@@ -325,16 +284,12 @@ void DockScreenRouter::add_alongside(const QString& primary, const QString& seco
                                .arg(panel_count_));
 
     if (primary_visible) {
-        // Primary already showing — add secondary non-exclusively
         navigate(secondary, false);
     } else {
-        // Primary not showing — open it exclusively, then split secondary alongside
         navigate(primary, true);
         navigate(secondary, false);
     }
 
-    // Re-focus the primary so it stays the "main" panel — the user typed
-    // "primary add secondary", meaning primary is what they're working in.
     primary_dw = find_dock_widget(primary);
     if (primary_dw && !primary_dw->isClosed()) {
         primary_dw->raise();
@@ -345,7 +300,6 @@ void DockScreenRouter::add_alongside(const QString& primary, const QString& seco
 }
 
 void DockScreenRouter::remove_screen(const QString& primary) {
-    // Close all panels except primary, which expands to fill the area.
     auto* keep = find_dock_widget(primary);
     for (auto* dw : manager_->dockWidgetsMap()) {
         if (dw != keep && !dw->isClosed())
@@ -362,18 +316,11 @@ void DockScreenRouter::remove_screen(const QString& primary) {
 }
 
 void DockScreenRouter::replace_screen(const QString& primary, const QString& secondary) {
-    // Navigate to primary (ensures it exists), close everything else, then
-    // navigate to secondary in exclusive mode so it fills the full area.
     Q_UNUSED(primary)
     navigate(secondary, true);
 }
 
 void DockScreenRouter::ensure_all_registered() {
-    // Pre-create CDockWidgets for ALL known screens and register them
-    // with the dock manager so restoreState() can find them by objectName
-    // in the DockWidgetsMap. All widgets are added as tabs into a single
-    // dock area (not separate splits!) and immediately closed. restoreState()
-    // will reopen and reposition only those that were visible in the saved layout.
     QStringList all_ids;
     for (auto it = factories_.cbegin(); it != factories_.cend(); ++it)
         all_ids.append(it.key());
@@ -386,17 +333,13 @@ void DockScreenRouter::ensure_all_registered() {
     for (const QString& id : all_ids) {
         if (!dock_widgets_.contains(id)) {
             auto* dw = create_dock_widget(id);
-            // Add all widgets as tabs in the SAME dock area to avoid
-            // creating 47 vertical splits. The first widget creates the area,
-            // all subsequent ones tab into it.
             if (first_area)
                 manager_->addDockWidget(ads::CenterDockWidgetArea, dw, first_area);
             else
                 first_area = manager_->addDockWidget(ads::CenterDockWidgetArea, dw);
-            dw->toggleView(false); // start hidden
+            dw->toggleView(false);
         }
     }
-    // Apply theme directly to all title bars and tabs created above.
     apply_ads_theme();
 }
 
@@ -429,8 +372,6 @@ bool DockScreenRouter::eventFilter(QObject* obj, QEvent* event) {
     if (!dw)
         return QObject::eventFilter(obj, event);
 
-    // Show a QLineEdit overlaid on the label for inline rename.
-    // Parent it to the label's parent (the tab frame) so geometry is correct.
     QWidget* tab_frame = lbl->parentWidget();
     auto* editor = new QLineEdit(tab_frame);
     editor->setText(dw->windowTitle());
@@ -444,7 +385,6 @@ bool DockScreenRouter::eventFilter(QObject* obj, QEvent* event) {
                           "  font-size:11px;"
                           "  font-family:'Consolas',monospace;"
                           "}");
-    // Map label rect into the tab frame's coordinate space
     editor->setGeometry(tab_frame->mapFromGlobal(lbl->mapToGlobal(QPoint(0, 0))).x(), 2, lbl->width(),
                         tab_frame->height() - 4);
     editor->show();
@@ -454,8 +394,6 @@ bool DockScreenRouter::eventFilter(QObject* obj, QEvent* event) {
     auto commit = [dw, editor]() {
         const QString name = editor->text().trimmed();
         if (!name.isEmpty()) {
-            // setWindowTitle on CDockWidget propagates to the tab label via
-            // Qt's QEvent::WindowTitleChange handling inside CDockWidget.
             dw->setWindowTitle(name);
         }
         editor->deleteLater();
@@ -464,7 +402,6 @@ bool DockScreenRouter::eventFilter(QObject* obj, QEvent* event) {
     connect(editor, &QLineEdit::returnPressed, editor, commit);
     connect(editor, &QLineEdit::editingFinished, editor, commit);
 
-    // Cancel on Escape via a local event filter
     struct EscFilter : QObject {
         QLineEdit* ed;
         explicit EscFilter(QLineEdit* e) : QObject(e), ed(e) {}
@@ -478,7 +415,7 @@ bool DockScreenRouter::eventFilter(QObject* obj, QEvent* event) {
     };
     editor->installEventFilter(new EscFilter(editor));
 
-    return true; // consume double-click so ADS doesn't float the widget
+    return true;
 }
 
 ads::CDockWidget* DockScreenRouter::create_dock_widget(const QString& id) {
@@ -487,21 +424,11 @@ ads::CDockWidget* DockScreenRouter::create_dock_widget(const QString& id) {
 
     auto* dw = new ads::CDockWidget(title_for_id(id));
     dw->setObjectName(id);
-
-    // Pinnable is intentionally excluded: the auto-hide pin button converts panels
-    // to collapsible sidebars, which causes them to disappear when another panel
-    // is opened alongside them. Movable/Floatable/Closable/Focusable are kept.
     dw->setFeatures(ads::CDockWidget::DockWidgetMovable | ads::CDockWidget::DockWidgetFloatable |
                     ads::CDockWidget::DockWidgetClosable | ads::CDockWidget::DockWidgetFocusable);
-
-    // Use dock-widget minimum size (not content size) so screens with large
-    // internal canvases (like DashboardCanvas) don't prevent side-by-side splits.
     dw->setMinimumSizeHintMode(ads::CDockWidget::MinimumSizeHintFromDockWidget);
     dw->setMinimumWidth(200);
 
-    // Screen widgets must allow shrinking so ADS can create side-by-side splits.
-    // Factory screens get a lightweight placeholder here; the real widget is swapped
-    // in on first navigation via materialize_screen().
     if (screens_.contains(id)) {
         screens_[id]->setMinimumWidth(0);
         dw->setWidget(screens_[id]);
@@ -515,9 +442,6 @@ ads::CDockWidget* DockScreenRouter::create_dock_widget(const QString& id) {
         dw->setWidget(placeholder);
     }
 
-    // Intercept double-click on the title label inside CDockWidgetTab to allow
-    // inline rename. We use the label (objectName "dockWidgetTabLabel"), NOT the
-    // tab frame — ADS already uses tab frame double-click to undock/float.
     if (auto* tab = dw->tabWidget()) {
         if (auto* lbl = tab->findChild<QLabel*>("dockWidgetTabLabel")) {
             lbl->installEventFilter(this);
@@ -525,21 +449,15 @@ ads::CDockWidget* DockScreenRouter::create_dock_widget(const QString& id) {
         }
     }
 
-    // Restore a previously saved custom title (user may have renamed this tab).
     const QString saved_title = load_tab_title(id);
     if (!saved_title.isEmpty())
         dw->setWindowTitle(saved_title);
 
-    // Persist the title whenever the user renames it via the inline editor.
     connect(dw, &ads::CDockWidget::titleChanged, this, [this, id](const QString& title) {
-        if (title != title_for_id(id)) // only save if user actually changed it
+        if (title != title_for_id(id))
             save_tab_title(id, title);
     });
 
-    // Materialize on first show; save state on hide.
-    // Grid tracking (panel_count_, grid_*) is NOT updated here — hide signals
-    // fire during exclusive resets and would corrupt the counter before the
-    // new panel is placed. Grid is updated only inside navigate() itself.
     connect(dw, &ads::CDockWidget::visibilityChanged, this, [this, id](bool visible) {
         if (visible) {
             materialize_screen(id);
@@ -590,8 +508,6 @@ void DockScreenRouter::materialize_screen(const QString& id) {
     restore_screen_state(id);
 }
 
-// ── Tab title persistence ─────────────────────────────────────────────────────
-
 void DockScreenRouter::save_tab_title(const QString& id, const QString& title) {
     SessionManager::instance().save_tab_state("title/" + id, {{"title", title}});
 }
@@ -600,8 +516,6 @@ QString DockScreenRouter::load_tab_title(const QString& id) const {
     const auto state = SessionManager::instance().load_tab_state("title/" + id);
     return state.value("title").toString();
 }
-
-// ── Screen state persistence (IStatefulScreen opt-in) ────────────────────────
 
 void DockScreenRouter::save_screen_state(const QString& id) {
     auto* screen = screens_.value(id, nullptr);
@@ -624,10 +538,6 @@ void DockScreenRouter::restore_screen_state(const QString& id) {
 }
 
 void DockScreenRouter::apply_ads_theme() {
-    // ADS's CSS (build_ads_qss on CDockManager) handles all ADS widget styling.
-    // This function ensures tab widgets and labels don't have stale widget-level
-    // QSS that could interfere with ADS's CSS cascade, and forces hidden tabs
-    // visible (they can get stuck hidden after ensure_all_registered()).
     for (auto* dw : manager_->dockWidgetsMap()) {
         if (auto* tab = dw->tabWidget()) {
             if (!tab->styleSheet().isEmpty())
