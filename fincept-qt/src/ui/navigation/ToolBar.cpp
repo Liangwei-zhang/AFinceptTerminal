@@ -250,7 +250,6 @@ QMenu* ToolBar::build_navigate_menu() {
 
     m->addSeparator();
     nav(m, "Docs", "docs");
-    nav(m, "Support", "support");
     nav(m, "About", "about");
     return m;
 }
