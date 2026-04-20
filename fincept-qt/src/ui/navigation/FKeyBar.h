@@ -6,9 +6,9 @@
 
 namespace fincept::ui {
 
-/// Scrollable tab bar.
-/// Tabs: Dashboard, Markets, Portfolio, News, Report Builder,
-///       Settings, Profile, About, Support
+/// Scrollable tab bar for the personal local terminal build.
+/// Core tabs only: Dashboard, Markets, Crypto, Portfolio, News,
+/// AI Chat, Backtesting, Algo, Nodes, Code, Settings, Profile.
 class TabBar : public QWidget {
     Q_OBJECT
   public:
