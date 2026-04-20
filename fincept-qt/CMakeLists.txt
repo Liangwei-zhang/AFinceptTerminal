@@ -630,7 +630,6 @@ set(SCREEN_SOURCES
     src/screens/economics/panels/UnescoPanel.cpp
     src/screens/economics/panels/BeaPanel.cpp
     src/screens/economics/panels/FinceptMacroPanel.cpp
-    src/screens/quantlib/QuantLibScreen.cpp
     src/screens/ma_analytics/MAAnalyticsScreen.cpp
     src/screens/ma_analytics/MAModulePanel.cpp
     src/screens/equity_research/EquityResearchScreen.cpp
