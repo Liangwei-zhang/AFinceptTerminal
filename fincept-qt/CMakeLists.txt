@@ -505,7 +505,6 @@ set(SCREEN_SOURCES
     src/screens/settings/KeybindingsSection.cpp
     src/screens/settings/PythonEnvSection.cpp
     src/screens/about/AboutScreen.cpp
-    src/screens/support/SupportScreen.cpp
     src/screens/docs/DocsScreen.cpp
     src/screens/ComingSoonScreen.cpp
     src/screens/setup/SetupScreen.cpp
@@ -857,7 +856,6 @@ set_source_files_properties(
     src/screens/settings/McpServersSection.cpp
     src/screens/settings/SettingsScreen.cpp
     src/screens/setup/SetupScreen.cpp
-    src/screens/support/SupportScreen.cpp
     src/screens/watchlist/WatchlistScreen.cpp
     src/storage/repositories/AgentConfigRepository.cpp
     src/storage/repositories/ChatRepository.cpp
