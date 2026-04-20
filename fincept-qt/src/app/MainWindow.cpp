@@ -27,7 +27,6 @@
 #include "screens/portfolio/PortfolioScreen.h"
 #include "screens/profile/ProfileScreen.h"
 #include "screens/settings/SettingsScreen.h"
-#include "screens/support/SupportScreen.h"
 #include "screens/watchlist/WatchlistScreen.h"
 #include "services/updater/UpdateService.h"
 #include "services/workspace/WorkspaceManager.h"
@@ -504,7 +503,6 @@ void MainWindow::setup_dock_screens() {
     dock_router_->register_factory("profile", []() { return new screens::ProfileScreen; });
     dock_router_->register_factory("settings", []() { return new screens::SettingsScreen; });
     dock_router_->register_factory("about", []() { return new screens::AboutScreen; });
-    dock_router_->register_factory("support", []() { return new screens::SupportScreen; });
     dock_router_->register_factory("docs", []() { return new screens::DocsScreen; });
 
     dock_router_->register_factory("file_manager", [this]() {
