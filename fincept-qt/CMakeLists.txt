@@ -29,9 +29,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_
         "Detected: ${CMAKE_CXX_COMPILER_VERSION}")
 endif()
 
-# ── Compiler cache (ccache / sccache) ────────────────────────────────────────
-# Detected at configure time. If present, routes every C/C++ compilation
-# through the cache. Cuts clean rebuilds by 5-20x when source hasn't changed.
 find_program(FINCEPT_CCACHE_PROGRAM NAMES ccache sccache)
 if(FINCEPT_CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${FINCEPT_CCACHE_PROGRAM}")
@@ -39,10 +36,6 @@ if(FINCEPT_CCACHE_PROGRAM)
     message(STATUS "Compiler cache enabled: ${FINCEPT_CCACHE_PROGRAM}")
 endif()
 
-# ── macOS rpath configuration ────────────────────────────────────────────────
-# Set install rpaths so the binary looks inside its own bundle for frameworks.
-# Without this, CMake embeds build-tree rpaths (e.g. _deps/qgeoview-build/lib)
-# and CPack IFW fails trying to delete them after macdeployqt already rewrote them.
 if(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
     set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks;@executable_path/../lib")
@@ -50,51 +43,22 @@ if(APPLE)
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 endif()
 
-# Export compile_commands.json for clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# ── Build performance ─────────────────────────────────────────────────────────
-# Unity build for infrastructure layers (safe — no local symbol conflicts)
-# Screens are excluded below via SKIP_UNITY_BUILD_INCLUSION (too many local statics/functions)
 set(CMAKE_UNITY_BUILD ON)
-# Batch size 14: sweet spot for MSVC — keeps each unity TU under ~30s to compile.
-# 32 was too large: one TU change forced a 32-file recompile; 14 limits blast radius.
 set(CMAKE_UNITY_BUILD_BATCH_SIZE 14)
-
-# FetchContent: default to skipping the update step after first download to cut
-# configure time by 5-15s on incremental configures. Not FORCEd so developers
-# can toggle it off (-DFETCHCONTENT_UPDATES_DISCONNECTED=OFF) when a GIT_TAG is
-# bumped to a commit not yet present in the local clone — otherwise the build
-# wedges with "Requested git ref ... is not present locally". CMake docs:
-# https://cmake.org/cmake/help/latest/module/FetchContent.html#variable:FETCHCONTENT_UPDATES_DISCONNECTED
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL "Skip FetchContent update step after initial download")
 
-# MSVC compiler flags for maximum build throughput:
-#   /MP        — multi-processor compilation (uses all logical cores within one project)
-#   /Z7        — embed debug info in .obj instead of shared PDB → no PDB write contention
-#                that serialises /MP builds (major speedup on 16+ core machines)
-#   /Oi        — enable intrinsics (faster codegen, no extra passes)
-#   /bigobj    — allow >65535 sections (needed by large unity TUs and MOC output)
-#   /d2FuncCache7 — MSVC internal: increase function-level cache for template-heavy code
 if(MSVC)
-    # /permissive- : enforces ISO C++ conformance — catches MS-specific non-portable
-    #                code that would break on GCC/Clang (two-phase lookup, etc.)
-    # /W4          : level-4 warnings (highest practical without /Wall noise)
-    # /WX only in CI so local iteration isn't blocked by new warnings
     add_compile_options(/MP /Z7 /Oi /bigobj /permissive- /W4)
     if(DEFINED ENV{CI})
         add_compile_options(/WX)
     endif()
-    # Replace /Zi and /ZI (shared PDB) with /Z7 in all configs
     foreach(flag_var
             CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELWITHDEBINFO
             CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL)
         string(REPLACE "/Zi" "/Z7" ${flag_var} "${${flag_var}}")
         string(REPLACE "/ZI" "/Z7" ${flag_var} "${${flag_var}}")
     endforeach()
-    # Release: enable whole-program optimisation + link-time code generation.
-    # /GL compiles to IL; /LTCG merges at link time for cross-TU inlining & DCE.
-    # Only for Release — Debug/RelWithDebInfo stay fast for iteration.
     if(CMAKE_BUILD_TYPE STREQUAL "Release" OR
        (DEFINED CMAKE_CONFIGURATION_TYPES AND "Release" IN_LIST CMAKE_CONFIGURATION_TYPES))
         add_compile_options($<$<CONFIG:Release>:/GL>)
@@ -102,9 +66,6 @@ if(MSVC)
     endif()
 endif()
 
-# ── GCC / Clang warning flags ────────────────────────────────────────────────
-# Mirror MSVC /W4 + /permissive- behavior on Unix compilers.
-# -Werror only in CI so local iteration isn't blocked.
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
     if(DEFINED ENV{CI})
@@ -112,20 +73,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 endif()
 
-# Suppress Windows min/max macros that break std::min/std::max in unity batches
 add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
-
-# ── Test suite (opt-in) ──────────────────────────────────────────────────────
-# OFF by default so a normal build is unchanged. Turn on with
-# -DFINCEPT_BUILD_TESTS=ON to compile the Qt Test executables under
-# fincept-qt/tests/. Run via `ctest` in the build directory.
 option(FINCEPT_BUILD_TESTS "Build the Fincept Terminal test suite" OFF)
 
-# ── Qt packages ──────────────────────────────────────────────────────────────
-# Qt is pinned to 6.8.3 across all platforms. Releases must build
-# on exactly this version to guarantee binary/ABI stability of the shipped
-# installer. Developers may override for local experimentation with
-# -DFINCEPT_ALLOW_QT_DRIFT=ON (not for CI or release builds).
 set(FINCEPT_QT_VERSION 6.8.3)
 if(FINCEPT_ALLOW_QT_DRIFT)
     find_package(Qt6 REQUIRED COMPONENTS
@@ -288,7 +238,6 @@ set(DATAHUB_SOURCES
     src/datahub/DataHubMetaTypes.cpp
 )
 
-# Local single-user mode: auth workflow removed from the build.
 set(AUTH_SOURCES)
 
 set(STORAGE_SOURCES
@@ -666,15 +615,6 @@ set(SCREEN_SOURCES
     src/screens/portfolio/PortfolioFFNView.cpp
     src/screens/portfolio/PortfolioAiPanel.cpp
     src/screens/portfolio/PortfolioAgentPanel.cpp
-    src/screens/agent_config/AgentConfigScreen.cpp
-    src/screens/agent_config/AgentsViewPanel.cpp
-    src/screens/agent_config/SystemViewPanel.cpp
-    src/screens/agent_config/CreateAgentPanel.cpp
-    src/screens/agent_config/ToolsViewPanel.cpp
-    src/screens/agent_config/AgentChatPanel.cpp
-    src/screens/agent_config/TeamsViewPanel.cpp
-    src/screens/agent_config/WorkflowsViewPanel.cpp
-    src/screens/agent_config/PlannerViewPanel.cpp
     src/screens/node_editor/NodeEditorScreen.cpp
     src/screens/node_editor/canvas/NodeCanvas.cpp
     src/screens/node_editor/canvas/NodeScene.cpp
@@ -700,15 +640,6 @@ set(APP_SOURCES
 set_source_files_properties(
     src/screens/ComingSoonScreen.cpp
     src/screens/about/AboutScreen.cpp
-    src/screens/agent_config/AgentChatPanel.cpp
-    src/screens/agent_config/AgentConfigScreen.cpp
-    src/screens/agent_config/AgentsViewPanel.cpp
-    src/screens/agent_config/CreateAgentPanel.cpp
-    src/screens/agent_config/PlannerViewPanel.cpp
-    src/screens/agent_config/SystemViewPanel.cpp
-    src/screens/agent_config/TeamsViewPanel.cpp
-    src/screens/agent_config/ToolsViewPanel.cpp
-    src/screens/agent_config/WorkflowsViewPanel.cpp
     src/screens/algo_trading/AlgoTradingScreen.cpp
     src/screens/algo_trading/DeploymentDashboard.cpp
     src/screens/algo_trading/ScannerPanel.cpp
