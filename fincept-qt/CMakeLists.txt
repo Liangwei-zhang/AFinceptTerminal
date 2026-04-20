@@ -409,7 +409,6 @@ set(TRADING_SOURCES
     src/trading/instruments/InstrumentService.cpp
 )
 set(SERVICE_SOURCES
-    src/services/alpha_arena/AlphaArenaService.cpp
     src/services/asia_markets/AsiaMarketsService.cpp
     src/services/crypto/TotpService.cpp
     src/services/python_cli/PythonCliService.cpp
@@ -632,7 +631,6 @@ set(SCREEN_SOURCES
     src/screens/economics/panels/UnescoPanel.cpp
     src/screens/economics/panels/BeaPanel.cpp
     src/screens/economics/panels/FinceptMacroPanel.cpp
-    src/screens/alpha_arena/AlphaArenaScreen.cpp
     src/screens/quantlib/QuantLibScreen.cpp
     src/screens/ma_analytics/MAAnalyticsScreen.cpp
     src/screens/ma_analytics/MAModulePanel.cpp
@@ -718,7 +716,6 @@ set_source_files_properties(
     src/screens/algo_trading/ScannerPanel.cpp
     src/screens/algo_trading/StrategyBuilderPanel.cpp
     src/screens/algo_trading/StrategyListPanel.cpp
-    src/screens/alpha_arena/AlphaArenaScreen.cpp
     src/screens/asia_markets/AsiaMarketsScreen.cpp
     src/screens/backtesting/BacktestingScreen.cpp
     src/screens/code_editor/CodeEditorScreen.cpp
@@ -781,7 +778,6 @@ set_source_files_properties(
     src/screens/dashboard/widgets/VideoPlayerWidget.cpp
     src/screens/data_mapping/DataMappingScreen.cpp
     src/screens/docs/DocsScreen.cpp
-    src/screens/derivatives/DerivativesScreen.cpp
     src/screens/economics/EconomicsScreen.cpp
     src/screens/equity_research/EquityAnalysisTab.cpp
     src/screens/equity_research/EquityFinancialsTab.cpp
