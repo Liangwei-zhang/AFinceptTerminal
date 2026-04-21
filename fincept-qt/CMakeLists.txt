@@ -268,7 +268,6 @@ set(STORAGE_SOURCES
     src/storage/repositories/LlmProfileRepository.cpp
     src/storage/repositories/DataSourceRepository.cpp
     src/storage/repositories/McpServerRepository.cpp
-    src/storage/repositories/AgentConfigRepository.cpp
     src/storage/repositories/ContextRecordingRepository.cpp
     src/storage/repositories/PortfolioRepository.cpp
     src/storage/repositories/WorkflowRepository.cpp
@@ -787,7 +786,6 @@ set_source_files_properties(
     src/screens/settings/SettingsScreen.cpp
     src/screens/setup/SetupScreen.cpp
     src/screens/watchlist/WatchlistScreen.cpp
-    src/storage/repositories/AgentConfigRepository.cpp
     src/storage/repositories/ChatRepository.cpp
     src/storage/repositories/ContextRecordingRepository.cpp
     src/storage/repositories/DataSourceRepository.cpp
@@ -903,7 +901,6 @@ set_source_files_properties(
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
 )
 set_source_files_properties(
-    src/storage/repositories/AgentConfigRepository.cpp
     src/storage/repositories/ChatRepository.cpp
     src/storage/repositories/ContextRecordingRepository.cpp
     src/storage/repositories/DataSourceRepository.cpp
