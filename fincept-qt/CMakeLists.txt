@@ -377,7 +377,6 @@ set(SERVICE_SOURCES
     src/services/portfolio/PortfolioService.cpp
     src/services/portfolio/PortfolioAnalyticsService.cpp
     src/services/economics/EconomicsService.cpp
-    src/services/agents/AgentService.cpp
     src/services/file_manager/FileManagerService.cpp
     src/services/workflow/NodeRegistry.cpp
     src/services/workflow/WorkflowService.cpp
