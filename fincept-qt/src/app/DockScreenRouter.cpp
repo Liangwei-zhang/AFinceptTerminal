@@ -34,7 +34,6 @@ QString DockScreenRouter::title_for_id(const QString& id) {
         {"economics", "Economics"},
         {"asia_markets", "Asia Markets"},
         {"ma_analytics", "M&A Analytics"},
-        {"node_editor", "Node Editor"},
         {"code_editor", "Code Editor"},
         {"excel", "Excel"},
         {"data_mapping", "Data Mapping"},
