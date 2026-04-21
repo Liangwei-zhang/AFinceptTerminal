@@ -613,20 +613,6 @@ set(SCREEN_SOURCES
     src/screens/portfolio/PortfolioFFNView.cpp
     src/screens/portfolio/PortfolioAiPanel.cpp
     src/screens/portfolio/PortfolioAgentPanel.cpp
-    src/screens/node_editor/NodeEditorScreen.cpp
-    src/screens/node_editor/canvas/NodeCanvas.cpp
-    src/screens/node_editor/canvas/NodeScene.cpp
-    src/screens/node_editor/canvas/NodeItem.cpp
-    src/screens/node_editor/canvas/PortItem.cpp
-    src/screens/node_editor/canvas/EdgeItem.cpp
-    src/screens/node_editor/canvas/TempEdge.cpp
-    src/screens/node_editor/canvas/MiniMap.cpp
-    src/screens/node_editor/palette/NodePalette.cpp
-    src/screens/node_editor/properties/NodePropertiesPanel.cpp
-    src/screens/node_editor/properties/ParameterWidgets.cpp
-    src/screens/node_editor/properties/ExecutionResultsPanel.cpp
-    src/screens/node_editor/toolbar/NodeEditorToolbar.cpp
-    src/screens/node_editor/toolbar/DeployDialog.cpp
 )
 set(APP_SOURCES
     src/app/main.cpp
@@ -737,20 +723,6 @@ set_source_files_properties(
     src/screens/news/NewsScreen.cpp
     src/screens/news/NewsSidePanel.cpp
     src/screens/news/NewsTickerStrip.cpp
-    src/screens/node_editor/NodeEditorScreen.cpp
-    src/screens/node_editor/canvas/EdgeItem.cpp
-    src/screens/node_editor/canvas/MiniMap.cpp
-    src/screens/node_editor/canvas/NodeCanvas.cpp
-    src/screens/node_editor/canvas/NodeItem.cpp
-    src/screens/node_editor/canvas/NodeScene.cpp
-    src/screens/node_editor/canvas/PortItem.cpp
-    src/screens/node_editor/canvas/TempEdge.cpp
-    src/screens/node_editor/palette/NodePalette.cpp
-    src/screens/node_editor/properties/ExecutionResultsPanel.cpp
-    src/screens/node_editor/properties/NodePropertiesPanel.cpp
-    src/screens/node_editor/properties/ParameterWidgets.cpp
-    src/screens/node_editor/toolbar/DeployDialog.cpp
-    src/screens/node_editor/toolbar/NodeEditorToolbar.cpp
     src/screens/notes/NotesScreen.cpp
     src/screens/portfolio/PortfolioAgentPanel.cpp
     src/screens/portfolio/PortfolioAiPanel.cpp
