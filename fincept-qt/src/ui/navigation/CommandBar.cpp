@@ -119,7 +119,6 @@ void CommandBar::build_commands() {
         {"ma_analytics", "M&A Analytics", "Mergers and acquisitions", {"ma", "mna", "mergers"}, "", {"ma", "mergers", "acquisitions"}},
         {"economics", "Economics", "Economic indicators", {"econ", "economics", "indicators"}, "", {"economics", "macro", "indicators"}},
         {"asia_markets", "Asia Markets", "Asian market data", {"asia", "apac", "asian"}, "", {"asia", "asian", "apac"}},
-        {"node_editor", "Node Editor", "Visual workflow editor", {"nodes", "workflow", "node"}, "", {"nodes", "workflow", "visual"}},
         {"code_editor", "Code Editor", "Code development", {"code", "editor", "dev"}, "", {"code", "editor", "programming"}},
         {"excel", "Excel", "Excel workbook integration", {"excel", "spreadsheet", "xls"}, "", {"excel", "spreadsheet", "workbook"}},
         {"data_mapping", "Data Mapping", "API integration & schema transform", {"datamap", "mapping", "schema"}, "", {"data", "mapping", "schema", "api"}},
