@@ -26,7 +26,6 @@ TabBar::TabBar(QWidget* parent) : QWidget(parent) {
         {"ai_chat", "AI CHAT"},
         {"backtesting", "BACKTEST"},
         {"algo_trading", "ALGO"},
-        {"code_editor", "CODE"},
         {"settings", "SETTINGS"},
         {"profile", "PROFILE"},
     };
